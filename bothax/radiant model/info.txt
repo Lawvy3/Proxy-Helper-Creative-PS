@@ -3,5 +3,5 @@ version|1.0.0
 author|Lawvy
 build|dev
 created|ny
-udpated|ny
+updated|ny
 discord|https://discord.gg/kKPVKbuMvq
