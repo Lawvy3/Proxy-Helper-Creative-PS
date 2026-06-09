@@ -6,6 +6,7 @@ return {
   created = "",
   updated = "",
   discord = "https://discord.gg/kKPVKbuMvq",
+  wm = "`0[`cRadiant`0] ``````",
   changelog = {
     "`0[`2+`0] `0Proxy released!"
   }
