@@ -1,8 +1,0 @@
-model|Radiant
-version|1.0.0
-author|Lawvy
-build|dev
-created|ny
-updated|ny
-wm|`0[`cRadiant`0]``````
-discord|https://discord.gg/kKPVKbuMvq
