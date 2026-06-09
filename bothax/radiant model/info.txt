@@ -1,0 +1,7 @@
+model|Radiant
+version|1.0.0
+author|Lawvy
+build|dev
+created|ny
+udpated|ny
+discord|https://discord.gg/kKPVKbuMvq
