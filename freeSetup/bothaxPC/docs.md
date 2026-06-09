@@ -36,27 +36,36 @@ Sistem ini terdiri dari:
 
 # ⚙️ CONFIG SYSTEM
 
-## config structure
+# Radiant Core Framework Documentation
 
+Version: 1.0.0  
+Type: Lua Proxy Framework (Growtopia Executor)
+
+---
+
+# 🧠 CORE ARCHITECTURE
+
+Radiant menggunakan 4 layer utama:
+
+1. **Command Layer** → register & routing command
+2. **Controller Layer** → logic command
+3. **Config Layer** → persistent settings
+4. **Hook Layer** → packet & variant interceptor
+
+---
+
+# ⚙️ CONFIG SYSTEM (CORE)
+
+## 📌 config
+
+Main state storage semua fitur.
+
+---
+
+## 🔁 toggle(tbl, key)
+
+Toggle value 0 ↔ 1 dan auto-save config.
+
+### Usage:
 ```lua
-config = {
-    spin = {
-        real = 1,
-        leme = 0,
-        reme = 1,
-        qeme = 0,
-        sspin = 0,
-    },
-
-    wrench = {
-        pull = 0,
-        kick = 0,
-        ban = 0,
-        smodal = 0,
-        text = {
-            pull = "Gas? MIN 5 BGL - BLACK",
-            kick = "BYE",
-            ban = "BYE"
-        }
-    }
-}
+toggle(config.spin, "reme")
