@@ -43,7 +43,8 @@ local const = {
         roulette = 758,
         wrench = 32,
         holographicSign = 2586,
-        superSpeed = 2322
+        superSpeed = 2322,
+        txmom = 4626
     },
     color = {
         success = "`2",
@@ -81,6 +82,10 @@ local function sendDialog(dialog)
         [0] = "OnDialogRequest",
         [1] = table.concat(dialog, "\n")
     })
+end
+
+local function sendOverlay(msg)
+    SendVariantList({[0] = "OnTextOverlay", [1] = msg}, -1)
 end
 
 
@@ -549,7 +554,7 @@ function controller.leme()
     local state =
         toggle(
             config.spin,
-            "reme"
+            "leme"
         )
 
     local status =
@@ -762,6 +767,26 @@ function controller.exit()
     SendPacket(3, "action|quit_to_exit")
 end
 
+function controller.auto()
+
+end
+
+function controller.option()
+
+end
+
+function controller.calculator()
+
+end
+
+function controller.calc()
+
+end
+
+function controller.logs()
+
+end
+
 
 
 -- SPIN HANDLER
@@ -970,6 +995,52 @@ end
 
 
 -- Wrench Handler
+local pendingWrench = {
+    netid = nil,
+    smodal = false
+}
+function utils.wrenchAction(type, netid)
+
+    if type == "smodal" then
+        SendPacket(2, "action|dialog_return\ndialog_name|popup\nnetID|" .. netid .. "|\nbuttonClicked|viewinv")
+    elseif type == "pull" then
+        SendPacket(2, "action|dialog_return\ndialog_name|popup\nnetID|" .. netid .. "|\nbuttonClicked|pull")
+        say(config.wrench.text.pull, true)
+    elseif type == "kick" then
+        SendPacket(2, "action|dialog_return\ndialog_name|popup\nnetID|" .. netid .. "|\nbuttonClicked|kick")
+        say(config.wrench.text.kick, true)
+    elseif type == "ban" then
+        SendPacket(2, "action|dialog_return\ndialog_name|popup\nnetID|" .. netid .. "|\nbuttonClicked|world_ban")
+        say(config.wrench.text.ban, true)
+    else
+        print(const.color.fail .. "404 Action Wrench Not Found")
+    end
+end
+
+function utils.queueSModal(netid)
+    pendingWrench.netid = tonumber(netid)
+    pendingWrench.smodal = true
+end
+
+function utils.clearQueue()
+    pendingWrench.netid = nil
+    pendingWrench.smodal = false
+end
+
+local function processWrenchQueue()
+
+    if not pendingWrench.smodal then
+        return
+    end
+
+    utils.wrenchAction(
+        "smodal",
+        pendingWrench.netid
+    )
+
+    utils.clearQueue()
+end
+
 local function wrenchHandlerPacket(type, packet)
     if packet:find("action|dialog_return\ndialog_name|wrenchDialog") then
         local smodal = tonumber(packet:match("wrenchSModal|(%d)"))
@@ -987,65 +1058,112 @@ local function wrenchHandlerPacket(type, packet)
         config.wrench.text.kick = kickText
         config.wrench.text.ban = banText
 
+        if packet:find("buttonClicked|wrenchPull") then
+            setExclusive(config.wrench, "pull", { "kick", "ban" })
+        elseif packet:find("buttonClicked|wrenchKick") then
+            setExclusive(config.wrench, "kick", { "pull", "ban" })
+        elseif packet:find("buttonClicked|wrenchBan") then
+            setExclusive(config.wrench, "ban", { "kick", "pull"})
+        end
 
         saveConfig()
     end
+
+
+
+    if packet:find("action|wrench\n|netid|") then
+
+        local netid =
+            tonumber(
+                packet:match("|netid|(%d+)")
+            )
+
+        if not netid then
+            return false
+        end
+
+        local fastAction = false
+
+        if config.wrench.pull == 1 then
+            fastAction = true
+            utils.wrenchAction("pull", netid)
+
+        elseif config.wrench.kick == 1 then
+            fastAction = true
+            utils.wrenchAction("kick", netid)
+
+        elseif config.wrench.ban == 1 then
+            fastAction = true
+            utils.wrenchAction("ban", netid)
+        end
+
+        if config.wrench.smodal == 1 then
+            utils.queueSModal(netid)
+        end
+
+        if fastAction then
+            return true
+        end
+    end
+
 end
 
 local function wrenchHandlerVariant(var, netid)
-    
-
-    if var[0] == "OnDialogRequest" and var[1]:find("'s Inventory") then
-        local wl = tonumber(var[1]:match("staticframe|" .. const.itemId.wl .. "|(%d+)|"))
-        local dl = tonumber(var[1]:match("staticframe|" .. const.itemId.dl .. "|(%d+)|"))*100
-        local bgl = tonumber(var[1]:match("staticframe|" .. const.itemId.bgl .. "|(%d+)|"))*10000
-        local black = tonumber(var[1]:match("staticframe|" .. const.itemId.black .. "|(%d+)|"))*1000000
-        local champ = tonumber(var[1]:match("staticframe|" .. const.itemId.champagne .. "|(%d+)|"))
-    
-        print("True")
-        return true
-    end
     
 
     if var[0] == "OnDialogRequest" and var[1]:find("embed_data|netID|") then
         local netid = tonumber(var[1]:match("embed_data|netID|(%d+)"))
 
         if netid == GetLocal().netid then
-            return true
+            return false
         else
-            if config.wrench.pull == 1 or config.wrench.ban == 1 or config.wrench.kick == 1 or config.wrench.smodal == 1 then
-                if config.wrench.smodal == 1 then
-                    SendPacket(2, "action|dialog_return\ndialog_name|popup\nnetID|" .. netid .. "|\nbuttonClicked|viewinv")
-
+            for k, v in pairs(config.wrench) do
+                if v == 1 then
+                    return true
                 end
-                return true
             end
+
         end
     end
 
-end
+    if var[0] == "OnConsoleMessage" then
 
-local function playerWrench(var, netid)
+        if pendingWrench.smodal then
+            processWrenchQueue()
+        end
+    end
+    
+    if var[0] == "OnDialogRequest" and var[1]:find("embed_data|userID") and config.wrench.smodal == 1 then
+        local wl = tonumber(var[1]:match("staticframe|" .. const.itemId.wl .. "|(%d+)|")) or 0
+        local dl = tonumber(var[1]:match("staticframe|" .. const.itemId.dl .. "|(%d+)|")) or 0
+        local bglInven = tonumber(var[1]:match("staticframe|" .. const.itemId.bgl .. "|(%d+)|")) or 0
+        local bglBank = tonumber(var[1]:match("Blue Gem Locks in the Bank: `$(%d+)``")) or 0
+        local bgl = bglInven+bglBank
+        local black = tonumber(var[1]:match("staticframe|" .. const.itemId.black .. "|(%d+)|")) or 0
+        local champ = tonumber(var[1]:match("staticframe|" .. const.itemId.champagne .. "|(%d+)|")) or 0
+        local name = var[1]:match("big|(.+)'s Inventory``") or "Unknown"
+    
+        local total =
+        wl +
+        (dl * 100) +
+        (bgl * 10000) +
+        (black * 1000000)
 
-    -- if config.wrench.smodal == 0 then
-    --     if var[0] == "OnDialogRequest" and var[1]:find("embed_data|netID|") then
-    --         netid = var[1]:match("embed_data|netID|(%d+)")
+        local locks =
+            utils.convertLocksCount(total)
 
-    --         local dialog = {}
+        if locks.wl == 0 and locks.dl == 0 and locks.bgl == 0 and locks.bgl == 0 then
+            sendOverlay("`0MISKUY DIE KGK ADA WL 1 PUN")
+        else
+            print(info.wm .. " " .. name .. " `aBLACK: " .. locks.black .. " `eBGL: " .. locks.bgl .. " `1DL: " .. locks.dl .. " `9WL: " .. locks.wl .. " `rCHAMPAGNE: " .. champ)
+            sendOverlay(name .. " `aBLACK: " .. locks.black .. " `eBGL: " .. locks.bgl .. " `1DL: " .. locks.dl .. " `9WL: " .. locks.wl .. " `rCHAMPAGNE: " .. champ)
+        end
 
-    --         for line in var[1]:gmatch("[^\r\n]+") do
-    --             table.insert(dialog, line)
-    --         end
+        utils.clearQueue()
 
-    --         table.insert(dialog, 3, "add_button|blacklistViaWrench|" .. const.color.text .. "Blacklist|0|0")
-    --         table.insert(dialog, 4, "add_button|focusViaWrench|" .. const.color.text .. "Lock Focus|0|0")
-    --         table.insert(dialog, 5, "add_button|blockChatViaWrench|" .. const.color.text .. "Block Chat|0|0")
+        return true
 
-    --         sendDialog(table.concat(dialog, "\n"))
-
-    --         return true
-    --     end
-    -- end
+    end
 
 end
 
@@ -1057,7 +1175,7 @@ local function wm(var)
         return true
     end
 
-    if var[0] == "OnDialogRequest" and not var[1]:find("add_button|friend_add|`wAdd as friend``|noflags|0|0|") then
+    if var[0] == "OnDialogRequest" and not var[1]:find("embed_data|netID|") and not var[1]:find("embed_data|userID|") then
         local dialog = {}
 
         for line in var[1]:gmatch("[^\r\n]+") do
@@ -1102,6 +1220,16 @@ local function execute()
         registerCommand("Info", "/proxy", "Shows Proxy Commands List", const.itemId.holographicSign)
         registerCommand("Info", "/news", "Shows Radiant Proxy News Update")
         registerCommand("Info", "/gazette", "Shows CreativePS Gazette")
+
+        registerCommand("Main Features", "/option", "Opens Many Features Options Dialog [alias: /options]", const.itemId.txmom)
+        registerAlias("/options", "/option")
+        registerCommand("Main Features", "/auto", "Opens Auto Pull Dialog Settings")
+        registerCommand("Main Features", "/logs", "Opens Action Dialog Like Roulette, Drop Etc [alias: /log]")
+        registerAlias("/log", "/logs")
+        registerCommand("Main Features", "/calculator", "Opens Calculator Settings Dialog [use /calc for math problem]")
+        registerCommand("Main Features", "/calc", "Solve Simple Math Problem [alias: /calcu]")
+        registerAlias("/calcu", "/calc")
+
 
         registerCommand("Roulette", "/spin", "Opens Spin Settings Dialog [alias: /roulette, /game]", const.itemId.roulette)
         registerAlias("/roulette", "/spin")
