@@ -1,1 +1,7 @@
-model|zenith
+model|Zenith
+author|Lawvy
+created|ny
+updated|ny
+version|1.0.0
+wm|`0[`cRadiant`0]``````
+discord|https://discord.com/invite/3znw965KJs
